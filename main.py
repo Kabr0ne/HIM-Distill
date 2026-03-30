@@ -6,6 +6,7 @@ screen_info = screen.get_monitors()[0]
 screen_width = screen_info.width - 200
 screen_height = screen_info.height -200
 
+
 class Window:
     def __init__(self, root):
 
@@ -45,6 +46,15 @@ class Window:
         self.temp_censor4 = self.canvas.create_text((screen_width/2)+180,732, anchor=tk.NW, text="4000,000°C", font=("Arial", 20))
         self.temp_censor4label = self.canvas.create_text((screen_width/2)+110,732, anchor=tk.NW, text="T4", font=("Arial", 20))
 
+        self.print_mouse_pos()
+
+    #get mouse cord, remove for prod ?
+    def print_mouse_pos(self):
+        x = root.winfo_pointerx() - root.winfo_rootx()
+        y = root.winfo_pointery() - root.winfo_rooty()
+        print(f"Mouse position: ({x}, {y})")
+        root.after(2000, self.print_mouse_pos)
+    
 
 
 
