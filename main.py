@@ -34,19 +34,19 @@ class Window:
 
         # Display Distill schema
         self.canvas.create_image(screen_width/schema_offset_x, screen_height/schema_offset_y, anchor=tk.CENTER, image=self.photo)
-        self.temp_censor1 = self.canvas.create_text((screen_width/schema_offset_x)-210,740, anchor=tk.NW, text="PE", font=("Arial", 20))
-        self.temp_censor1label = self.canvas.create_text((screen_width/schema_offset_x)+50,30, anchor=tk.NW, text="T1", font=("Arial", 20))
-        self.temp_censor2label = self.canvas.create_text((screen_width/schema_offset_x)+65,130, anchor=tk.NW, text="T2", font=("Arial", 20))
-        self.temp_censor3label = self.canvas.create_text((screen_width/schema_offset_x)+95,290, anchor=tk.NW, text="T3", font=("Arial", 20))
-        self.temp_censor4label = self.canvas.create_text((screen_width/schema_offset_x)+110,732, anchor=tk.NW, text="T4", font=("Arial", 20))
+        self.temp_sensor1 = self.canvas.create_text((screen_width/schema_offset_x)-210,740, anchor=tk.NW, text="PE", font=("Arial", 20))
+        self.temp_sensor1label = self.canvas.create_text((screen_width/schema_offset_x)+50,30, anchor=tk.NW, text="T1", font=("Arial", 20))
+        self.temp_sensor2label = self.canvas.create_text((screen_width/schema_offset_x)+65,130, anchor=tk.NW, text="T2", font=("Arial", 20))
+        self.temp_sensor3label = self.canvas.create_text((screen_width/schema_offset_x)+95,290, anchor=tk.NW, text="T3", font=("Arial", 20))
+        self.temp_sensor4label = self.canvas.create_text((screen_width/schema_offset_x)+110,732, anchor=tk.NW, text="T4", font=("Arial", 20))
 
-        #PlaceHolder for temp censor
-        self.temp_censor1 = self.canvas.create_text((screen_width/schema_offset_x)+115,30, anchor=tk.NW, text="1000,000°C", font=("Arial", 20))
-        self.temp_censor2 = self.canvas.create_text((screen_width/schema_offset_x)+130,130, anchor=tk.NW, text="2000,000°C", font=("Arial", 20))
-        self.temp_censor3 = self.canvas.create_text((screen_width/schema_offset_x)+95,235, anchor=tk.NW, text="3000,000°C", font=("Arial", 20))
-        self.temp_censor4 = self.canvas.create_text((screen_width/schema_offset_x)+180,732, anchor=tk.NW, text="4000,000°C", font=("Arial", 20))
+        #PlaceHolder for temp sensor
+        self.temp_sensor1 = self.canvas.create_text((screen_width/schema_offset_x)+115,30, anchor=tk.NW, text="1000,000°C", font=("Arial", 20))
+        self.temp_sensor2 = self.canvas.create_text((screen_width/schema_offset_x)+130,130, anchor=tk.NW, text="2000,000°C", font=("Arial", 20))
+        self.temp_sensor3 = self.canvas.create_text((screen_width/schema_offset_x)+95,235, anchor=tk.NW, text="3000,000°C", font=("Arial", 20))
+        self.temp_sensor4 = self.canvas.create_text((screen_width/schema_offset_x)+180,732, anchor=tk.NW, text="4000,000°C", font=("Arial", 20))
         
-        #PlaceHolder for swich state
+        #PlaceHolder for switch state
         self.is_on = False
         self.btn_setON = self.canvas.create_oval(200, 120, 250, 170, fill="red", outline="black", width=2)
         self.canvas.create_text(140, 70, anchor=tk.NW, text="Mise en Marche", font=("Arial", 20))
