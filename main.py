@@ -19,6 +19,7 @@ class Window:
     def __init__(self, root):
 
         self.root = root
+        self.current_id_session = None
 
         root.configure(bg="white")
         root.title("HIM-Distill")
@@ -145,7 +146,11 @@ class Window:
         self.canvas_graphic.get_tk_widget().pack()
         self.canvas.create_window(screen_width - 20, (screen_height/1.5)-60, anchor=tk.NE, window=self.graphic_frame)   
 
+        self.start_session()
+        self.menu()
         self.refresh_data()
+        self.auto_save_timer()
+
                                                                
 
     def toggle_switch(self):
@@ -247,7 +252,7 @@ class Window:
             if self.is_filter_censor3_on: active_sensors.append("T3")
             if self.is_filter_censor4_on: active_sensors.append("T4")
 
-            if not active_sensors:
+            if not active_sensors or self.current_id_session is None:
                 for item in self.tree.get_children():
                     self.tree.delete(item)
                 self.ax.clear()
@@ -257,9 +262,9 @@ class Window:
                 cursor = conn.cursor()
 
                 placeholders = ', '.join(['?'] * len(active_sensors))
-                query = f"SELECT sensor_name, temperature, timestamp FROM temperature_readings WHERE sensor_name IN ({placeholders}) ORDER BY id DESC LIMIT 30"
+                query = f"SELECT sensor_name, temperature, timestamp FROM temperature_readings WHERE sensor_name IN ({placeholders}) AND session_id = ? ORDER BY id DESC LIMIT 30"
                 
-                cursor.execute(query, active_sensors)
+                cursor.execute(query, (*active_sensors, self.current_id_session))
                 rows = cursor.fetchall()
                 conn.close()
 
@@ -300,6 +305,63 @@ class Window:
             print(f"Error : {e}")
 
         self.root.after(2000, self.refresh_data)
+
+    def menu(self):
+        self.menu_bar = tk.Menu(self.root)
+
+        self.history_menu = tk.Menu(self.menu_bar, postcommand=self.update_history)
+        self.menu_bar.add_cascade(label="historique des Sessions", menu=self.history_menu)
+        self.menu_bar.add_command(label="Sauvegarder la session", command=self.save_data)
+        self.menu_bar.add_command(label="Exporter la session")
+
+        self.root.config(menu=self.menu_bar)
+
+    def start_session(self):
+        conn = sqlite3.connect('db/him_distill.db')
+        cursor = conn.cursor()
+        name = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("INSERT INTO sessions (start_time) VALUES (?)", (name,))
+        self.current_id_session = cursor.lastrowid
+        conn.commit()
+        conn.close()
+    
+    def save_data(self):
+        try:
+            conn = sqlite3.connect('db/him_distill.db')
+            cursor = conn.cursor()
+
+            for sensor in ["T1", "T2", "T3", "T4"]:
+                cursor.execute("SELECT temperature FROM temperature_readings WHERE sensor_name = ? ORDER BY id DESC LIMIT 1", (sensor,))
+                last_temp = cursor.fetchone()
+                if last_temp:
+                    cursor.execute("INSERT INTO temperature_readings (session_id, sensor_name, temperature) VALUES (?, ?, ?)", (self.current_id_session, sensor, last_temp[0]))
+
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"Error : {e}")
+    
+    def auto_save_timer(self):
+        self.save_data()
+        self.root.after(60000, self.auto_save_timer)
+
+    def update_history(self):
+        self.history_menu.delete(0, tk.END)#clear existing list
+        try:
+            conn = sqlite3.connect('db/him_distill.db')
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, start_time FROM sessions ORDER BY id DESC LIMIT 15")
+            sessions = cursor.fetchall()
+            conn.close()
+
+            for session_id, session_date in sessions:
+                self.history_menu.add_command(label=f"Session {session_id}: {session_date}", command=lambda id=session_id: self.load_session(id))
+        except Exception as e:
+            print(f"Error : {e}")
+
+    def load_session(self, session_id):
+        self.current_id_session = session_id
+        self.refresh_data()
 
 
 root = tk.Tk()
