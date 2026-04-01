@@ -1,6 +1,16 @@
 import tkinter as tk
+from tkinter import ttk
+import csv
+from tkinter import filedialog, messagebox
+import sqlite3
 from PIL import Image, ImageTk
 import screeninfo as screen
+from matplotlib.figure import Figure
+from datetime import datetime
+import matplotlib.dates as mdates
+
+
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 screen_info = screen.get_monitors()[0]
 screen_width = screen_info.width - 200
@@ -9,6 +19,9 @@ screen_height = screen_info.height -200
 
 class Window:
     def __init__(self, root):
+
+        self.root = root
+        self.current_id_session = None
 
         root.configure(bg="white")
         root.title("HIM-Distill")
@@ -29,7 +42,7 @@ class Window:
         self.photo = ImageTk.PhotoImage(self.image) # Convert PIL image to tkinter
 
 
-        self.canvas = tk.Canvas(root, width=screen_width, height=screen_height, bg="white")
+        self.canvas = tk.Canvas(root, width=screen_width, height=screen_height, bg="#ECECEC")
         self.canvas.pack()
 
         # Display Distill schema
@@ -45,7 +58,7 @@ class Window:
         self.temp_sensor2 = self.canvas.create_text((screen_width/schema_offset_x)+130,130, anchor=tk.NW, text="2000,000°C", font=("Arial", 20))
         self.temp_sensor3 = self.canvas.create_text((screen_width/schema_offset_x)+95,235, anchor=tk.NW, text="3000,000°C", font=("Arial", 20))
         self.temp_sensor4 = self.canvas.create_text((screen_width/schema_offset_x)+180,732, anchor=tk.NW, text="4000,000°C", font=("Arial", 20))
-        
+
         #PlaceHolder for switch state
         self.is_on = False
         self.btn_setON = self.canvas.create_oval(200, 120, 250, 170, fill="red", outline="black", width=2)
@@ -73,8 +86,73 @@ class Window:
         self.btn_heating3 = self.canvas.create_oval(340, 370, 390, 420, fill="gray", outline="black", width=2)
         self.canvas.tag_bind(self.btn_heating3, "<Button-1>", lambda event: self.toggle_heating3())
 
+        self.is_reflux_on = False
+        self.canvas.create_text(140, 450, anchor=tk.NW, text="Recette Reflux", font=("Arial", 20))
+        self.btn_reflux = self.canvas.create_oval(200, 500, 250, 550, fill="red", outline="black", width=2)
+        self.canvas.tag_bind(self.btn_reflux, "<Button-1>", lambda event: self.toggle_reflux())
 
-        self.print_mouse_pos()
+
+        #Database history
+        self.database_frame = tk.Frame(self.root, bg="white", bd=2, relief="flat")
+        self.style_tree = ttk.Style()
+        self.style_tree.configure("Treeview", background="white", foreground="black", font=("Arial", 20), rowheight=30)
+
+        self.tree = ttk.Treeview(self.database_frame, columns=("Capteur", "Température", "Heure"), show='headings', height=15)
+        self.tree.heading("Capteur", text="Capteur")
+        self.tree.heading("Température", text="Température (°C)")
+        self.tree.heading("Heure", text="Heure")
+        self.tree.column("Capteur", width=200, anchor=tk.CENTER, stretch=True)
+        self.tree.column("Température", width=200, anchor=tk.CENTER, stretch=True)
+        self.tree.column("Heure", width=200, anchor=tk.CENTER, stretch=True)
+        self.tree.pack()
+        self.canvas.create_window(screen_width - 20, (screen_height/5)-80, anchor=tk.NE, window=self.database_frame)
+
+
+
+        self.canvas.create_text(screen_width/2 + 180, (screen_height/5)-150, anchor=tk.NW, text="Filtres Capteurs", font=("Arial", 20))
+
+        self.is_filter_censor1_on = True
+        self.is_filter_censor2_on = True
+        self.is_filter_censor3_on = True
+        self.is_filter_censor4_on = True
+
+
+        self.btn_filter_censor4 = self.canvas.create_oval(screen_width - 180, (screen_height/5)-150, screen_width - 130, (screen_height/5)-100, fill="green", outline="black", width=2)
+        self.canvas.create_text(screen_width - 175, (screen_height/5)-190, anchor=tk.NW, text="T4", font=("Arial", 25))
+        self.canvas.tag_bind(self.btn_filter_censor4, "<Button-1>", lambda event: self.toggle_filter_censor4())
+
+
+
+        self.btn_filter_censor3 = self.canvas.create_oval(screen_width - 280, (screen_height/5)-150, screen_width - 230, (screen_height/5)-100, fill="green", outline="black", width=2)
+        self.canvas.create_text(screen_width - 275, (screen_height/5)-190, anchor=tk.NW, text="T3", font=("Arial", 25))
+        self.canvas.tag_bind(self.btn_filter_censor3, "<Button-1>", lambda event: self.toggle_filter_censor3())
+
+
+        self.btn_filter_censor2 = self.canvas.create_oval(screen_width - 380, (screen_height/5)-150, screen_width - 330, (screen_height/5)-100, fill="green", outline="black", width=2)
+        self.canvas.create_text(screen_width - 375, (screen_height/5)-190, anchor=tk.NW, text="T2", font=("Arial", 25))
+        self.canvas.tag_bind(self.btn_filter_censor2, "<Button-1>", lambda event: self.toggle_filter_censor2())
+
+
+        self.btn_filter_censor1 = self.canvas.create_oval(screen_width - 480, (screen_height/5)-150, screen_width - 430, (screen_height/5)-100, fill="green", outline="black", width=2)
+        self.canvas.create_text(screen_width - 475, (screen_height/5)-190, anchor=tk.NW, text="T1", font=("Arial", 25))
+        self.canvas.tag_bind(self.btn_filter_censor1, "<Button-1>", lambda event: self.toggle_filter_censor1())
+
+        #graphic history
+        self.graphic_frame = tk.Frame(self.root, bg="white", bd=2, relief="flat")
+        self.fig = Figure(figsize=(6, 4), dpi=100)
+        self.ax = self.fig.add_subplot(111)
+        self.ax.set_title("Graphique Température")
+        self.ax.set_facecolor("#F0F0F0")
+
+        self.canvas_graphic = FigureCanvasTkAgg(self.fig, master=self.graphic_frame)
+        self.canvas_graphic.get_tk_widget().pack()
+        self.canvas.create_window(screen_width - 20, (screen_height/1.5)-60, anchor=tk.NE, window=self.graphic_frame)   
+
+        self.start_session()
+        self.menu()
+        self.refresh_data()
+
+                                                               
 
     def toggle_switch(self):
         self.is_on = not self.is_on #Swap between true and false
@@ -85,10 +163,21 @@ class Window:
 
     def toggle_heating(self):
         self.is_heating_on = not self.is_heating_on
+        self.is_heating_on1 = False
+        self.is_heating_on2 = False
+        self.is_heating_on3 = False
+        
         if self.is_heating_on:
             self.canvas.itemconfig(self.btn_heating, fill="green")
+            self.canvas.itemconfig(self.btn_heating1, fill="red")
+            self.canvas.itemconfig(self.btn_heating2, fill="red")
+            self.canvas.itemconfig(self.btn_heating3, fill="red")
         else:
             self.canvas.itemconfig(self.btn_heating, fill="red")
+            self.canvas.itemconfig(self.btn_heating1, fill="gray")
+            self.canvas.itemconfig(self.btn_heating2, fill="gray")
+            self.canvas.itemconfig(self.btn_heating3, fill="gray")
+            
 
     def toggle_heating1(self):
         if self.is_heating_on:
@@ -113,15 +202,210 @@ class Window:
                 self.canvas.itemconfig(self.btn_heating3, fill="green")
             else:
                 self.canvas.itemconfig(self.btn_heating3, fill="red")
-
-
-    #get mouse cord, remove for prod ?
-    def print_mouse_pos(self):
-        x = root.winfo_pointerx() - root.winfo_rootx()
-        y = root.winfo_pointery() - root.winfo_rooty()
-        print(f"Mouse position: ({x}, {y})")
-        root.after(2000, self.print_mouse_pos)
     
+    def toggle_reflux(self):
+        self.is_reflux_on = not self.is_reflux_on
+        if self.is_reflux_on:
+            self.canvas.itemconfig(self.btn_reflux, fill="green")
+        else:
+            self.canvas.itemconfig(self.btn_reflux, fill="red")
+
+    #Filter methods for database history
+    def toggle_filter_censor1(self):
+        self.is_filter_censor1_on = not self.is_filter_censor1_on
+        if self.is_filter_censor1_on:
+            self.canvas.itemconfig(self.btn_filter_censor1, fill="green")
+        else:
+            self.canvas.itemconfig(self.btn_filter_censor1, fill="red")
+        self.refresh_data()
+
+    def toggle_filter_censor2(self):
+        self.is_filter_censor2_on = not self.is_filter_censor2_on
+        if self.is_filter_censor2_on:
+            self.canvas.itemconfig(self.btn_filter_censor2, fill="green")
+        else:
+            self.canvas.itemconfig(self.btn_filter_censor2, fill="red")
+        self.refresh_data()
+
+    def toggle_filter_censor3(self):
+        self.is_filter_censor3_on = not self.is_filter_censor3_on
+        if self.is_filter_censor3_on:
+            self.canvas.itemconfig(self.btn_filter_censor3, fill="green")
+        else:
+            self.canvas.itemconfig(self.btn_filter_censor3, fill="red")
+        self.refresh_data()
+
+    def toggle_filter_censor4(self):
+        self.is_filter_censor4_on = not self.is_filter_censor4_on
+        if self.is_filter_censor4_on:
+            self.canvas.itemconfig(self.btn_filter_censor4, fill="green")
+        else:
+            self.canvas.itemconfig(self.btn_filter_censor4, fill="red")
+        self.refresh_data()
+
+
+    def refresh_data(self):
+        try:
+
+            active_sensors = []
+            if self.is_filter_censor1_on: active_sensors.append("T1")
+            if self.is_filter_censor2_on: active_sensors.append("T2")
+            if self.is_filter_censor3_on: active_sensors.append("T3")
+            if self.is_filter_censor4_on: active_sensors.append("T4")
+
+            if not active_sensors or self.current_id_session is None:
+                for item in self.tree.get_children():
+                    self.tree.delete(item)
+                self.ax.clear()
+                self.canvas_graphic.draw()
+            else:
+                conn = sqlite3.connect('db/him_distill.db')
+                cursor = conn.cursor()
+
+                placeholders = ', '.join(['?'] * len(active_sensors))
+                query = f"SELECT sensor_name, temperature, timestamp FROM temperature_readings WHERE sensor_name IN ({placeholders}) AND session_id = ? ORDER BY id DESC LIMIT 30"
+                
+                cursor.execute(query, (*active_sensors, self.current_id_session))
+                rows = cursor.fetchall()
+                conn.close()
+
+                for item in self.tree.get_children():
+                    self.tree.delete(item)
+
+                for row in rows[:15]:
+                    name, temp, full_time = row
+                    time_display = full_time.split()[-1]
+                    self.tree.insert("", tk.END, values=(name, f"{temp:.2f}", time_display))
+                    
+
+                self.ax.clear()
+                self.ax.set_title("Graphique Température")
+
+                sensor_data = {sensor: {'x': [], 'y': []} for sensor in active_sensors}
+
+                for row in reversed(rows): 
+                    name, temp, full_time = row
+                    if name in sensor_data:
+                        try:
+                            dt_obj = datetime.strptime(full_time, '%Y-%m-%d %H:%M:%S')
+                            sensor_data[name]['x'].append(dt_obj)
+                            sensor_data[name]['y'].append(temp)
+                        except ValueError:
+                            continue
+                
+                colors = {"T1": "blue", "T2": "orange", "T3": "green", "T4": "red"}
+
+                has_legend = False
+                for sensor, data in sensor_data.items():
+                    if data['x']:
+                        self.ax.plot(data['x'], data['y'], label=sensor, color=colors.get(sensor, "black"))
+                        has_legend = True
+
+                self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+
+                #Legend don't draw herself if no data
+                if has_legend:   
+                    self.ax.legend(loc="upper left", fontsize=10)
+
+                self.canvas_graphic.draw()
+
+        except Exception as e:
+            print(f"Error : {e}")
+
+        self.root.after(2000, self.refresh_data)
+
+    def menu(self):
+        self.menu_bar = tk.Menu(self.root)
+
+        self.history_menu = tk.Menu(self.menu_bar, postcommand=self.update_history)
+        self.menu_bar.add_cascade(label="historique des Sessions", menu=self.history_menu)
+        self.menu_bar.add_command(label="Nouvelle Session", command=self.start_session)
+        self.menu_bar.add_command(label="Exporter la session", command=self.export_session)
+        self.menu_bar.add_command(label="Supprimer les sessions", command=self.delete_sessions)
+
+        self.root.config(menu=self.menu_bar)
+
+    def start_session(self):
+        conn = sqlite3.connect('db/him_distill.db')
+        cursor = conn.cursor()
+        #cursor.execute("DELETE FROM sessions")
+        #cursor.execute("DELETE FROM temperature_readings")
+        name = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("INSERT INTO sessions (start_time) VALUES (?)", (name,))
+        self.current_id_session = cursor.lastrowid
+        conn.commit()
+        conn.close()
+    
+
+    def update_history(self):
+        self.history_menu.delete(0, tk.END)#clear existing list
+        try:
+            conn = sqlite3.connect('db/him_distill.db')
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, start_time FROM sessions ORDER BY id DESC LIMIT 15")
+            sessions = cursor.fetchall()
+            conn.close()
+
+            for session_id, session_date in sessions:
+                self.history_menu.add_command(label=f"Session {session_id}: {session_date}", command=lambda id=session_id: self.load_session(id))
+        except Exception as e:
+            print(f"Error : {e}")
+
+    def load_session(self, session_id):
+        self.current_id_session = session_id
+        self.refresh_data()
+
+    def export_session(self):
+        if self.current_id_session is None:
+            messagebox.showwarning("Avertissement", "Aucune session active à exporter.")
+            return
+    
+        path_file = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv")],
+            title="Exporter la session",
+            initialfile=f"session_{self.current_id_session}.csv"
+        )
+
+        if not path_file:
+            return
+        else :
+            try:
+                conn = sqlite3.connect('db/him_distill.db')
+                cursor = conn.cursor()
+                cursor.execute("SELECT sensor_name, temperature, timestamp FROM temperature_readings WHERE session_id = ? ORDER BY timestamp ASC", (self.current_id_session,))
+                rows = cursor.fetchall()
+                conn.close()
+
+                if not rows:
+                    messagebox.showinfo("Information", "Aucune donnée à exporter pour cette session.")
+                    return
+                
+                with open(path_file, mode='w', newline='', encoding="utf-8") as file:
+                    writer = csv.writer(file, delimiter=";")
+                    writer.writerow(["Capteur", "Temp", "Timestamp"])
+                    writer.writerows(rows)
+                messagebox.showinfo("Succès", f"Session exportée avec succès vers {path_file}")
+            except Exception as e:
+                messagebox.showerror("Erreur", {e})
+
+    def delete_sessions(self):
+        if messagebox.askyesno("Confirmer", "Cette action aura pour conséquence de supprimer la session en cours et toutes les données associées. Voulez-vous continuer ?"):
+            try:
+                conn = sqlite3.connect('db/him_distill.db')
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM sessions WHERE id = ?", (self.current_id_session,))
+                cursor.execute("DELETE FROM temperature_readings WHERE session_id = ?", (self.current_id_session,))
+                conn.commit()
+                conn.close()
+                self.current_id_session = None
+                self.refresh_data()
+                messagebox.showinfo("Succès", "Session supprimée avec succès.")
+            except Exception as e:
+                messagebox.showerror("Erreur",{e})
+
+        
+
 
 
 
