@@ -109,7 +109,7 @@ class Window:
 
 
 
-        self.canvas.create_text(screen_width/2 + 180, (screen_height/5)-150, anchor=tk.NW, text="Filtres Capteurs", font=("Arial", 20))
+        self.canvas.create_text(screen_width/2 + 240, (screen_height/5)-140, anchor=tk.NW, text="Filtres Capteurs", font=("Arial", 20))
 
         self.is_filter_censor1_on = True
         self.is_filter_censor2_on = True
@@ -117,24 +117,24 @@ class Window:
         self.is_filter_censor4_on = True
 
 
-        self.btn_filter_censor4 = self.canvas.create_oval(screen_width - 180, (screen_height/5)-150, screen_width - 130, (screen_height/5)-100, fill="green", outline="black", width=2)
-        self.canvas.create_text(screen_width - 175, (screen_height/5)-190, anchor=tk.NW, text="T4", font=("Arial", 25))
+        self.btn_filter_censor4 = self.canvas.create_oval(screen_width - 100, (screen_height/5)-150, screen_width - 50, (screen_height/5)-100, fill="green", outline="black", width=2)
+        self.canvas.create_text(screen_width - 95, (screen_height/5)-190, anchor=tk.NW, text="T4", font=("Arial", 25))
         self.canvas.tag_bind(self.btn_filter_censor4, "<Button-1>", lambda event: self.toggle_filter_censor4())
 
 
 
-        self.btn_filter_censor3 = self.canvas.create_oval(screen_width - 280, (screen_height/5)-150, screen_width - 230, (screen_height/5)-100, fill="green", outline="black", width=2)
-        self.canvas.create_text(screen_width - 275, (screen_height/5)-190, anchor=tk.NW, text="T3", font=("Arial", 25))
+        self.btn_filter_censor3 = self.canvas.create_oval(screen_width - 200, (screen_height/5)-150, screen_width - 150, (screen_height/5)-100, fill="green", outline="black", width=2)
+        self.canvas.create_text(screen_width - 195, (screen_height/5)-190, anchor=tk.NW, text="T3", font=("Arial", 25))
         self.canvas.tag_bind(self.btn_filter_censor3, "<Button-1>", lambda event: self.toggle_filter_censor3())
 
 
-        self.btn_filter_censor2 = self.canvas.create_oval(screen_width - 380, (screen_height/5)-150, screen_width - 330, (screen_height/5)-100, fill="green", outline="black", width=2)
-        self.canvas.create_text(screen_width - 375, (screen_height/5)-190, anchor=tk.NW, text="T2", font=("Arial", 25))
+        self.btn_filter_censor2 = self.canvas.create_oval(screen_width - 300, (screen_height/5)-150, screen_width - 250, (screen_height/5)-100, fill="green", outline="black", width=2)
+        self.canvas.create_text(screen_width - 295, (screen_height/5)-190, anchor=tk.NW, text="T2", font=("Arial", 25))
         self.canvas.tag_bind(self.btn_filter_censor2, "<Button-1>", lambda event: self.toggle_filter_censor2())
 
 
-        self.btn_filter_censor1 = self.canvas.create_oval(screen_width - 480, (screen_height/5)-150, screen_width - 430, (screen_height/5)-100, fill="green", outline="black", width=2)
-        self.canvas.create_text(screen_width - 475, (screen_height/5)-190, anchor=tk.NW, text="T1", font=("Arial", 25))
+        self.btn_filter_censor1 = self.canvas.create_oval(screen_width - 400, (screen_height/5)-150, screen_width - 350, (screen_height/5)-100, fill="green", outline="black", width=2)
+        self.canvas.create_text(screen_width - 395, (screen_height/5)-190, anchor=tk.NW, text="T1", font=("Arial", 25))
         self.canvas.tag_bind(self.btn_filter_censor1, "<Button-1>", lambda event: self.toggle_filter_censor1())
 
         #graphic history
@@ -245,6 +245,7 @@ class Window:
 
 
     def refresh_data(self):
+        self.update_temp()
         try:
 
             active_sensors = []
@@ -269,6 +270,7 @@ class Window:
                 rows = cursor.fetchall()
                 conn.close()
 
+                
                 for item in self.tree.get_children():
                     self.tree.delete(item)
 
@@ -313,6 +315,30 @@ class Window:
             print(f"Error : {e}")
 
         self.root.after(2000, self.refresh_data)
+    
+    def update_temp(self):
+        conn = sqlite3.connect('db/him_distill.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT sensor_name, temperature, timestamp FROM temperature_readings WHERE session_id = ? ORDER BY id DESC LIMIT 30", (self.current_id_session,))
+        rows = cursor.fetchall()
+        conn.close()
+
+        if rows :
+            value_temp = {row[0]: row[1] for row in reversed(rows)}
+
+            sensors_map = {
+                "T1": self.temp_sensor1,
+                "T2": self.temp_sensor2,
+                "T3": self.temp_sensor3,
+                "T4": self.temp_sensor4
+            }
+
+            for name, canvas_id in sensors_map.items():
+                if name in value_temp:
+                    new_temp = f"{value_temp[name]:.2f}°C"
+                    self.canvas.itemconfig(canvas_id, text=new_temp, fill="red")
+
+
 
     def menu(self):
         self.menu_bar = tk.Menu(self.root)
@@ -328,8 +354,6 @@ class Window:
     def start_session(self):
         conn = sqlite3.connect('db/him_distill.db')
         cursor = conn.cursor()
-        #cursor.execute("DELETE FROM sessions")
-        #cursor.execute("DELETE FROM temperature_readings")
         name = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute("INSERT INTO sessions (start_time) VALUES (?)", (name,))
         self.current_id_session = cursor.lastrowid
@@ -347,7 +371,7 @@ class Window:
             conn.close()
 
             for session_id, session_date in sessions:
-                self.history_menu.add_command(label=f"Session {session_id}: {session_date}", command=lambda id=session_id: self.load_session(id))
+                self.history_menu.add_command(label=f"Session du {session_date}", command=lambda id=session_id: self.load_session(id))
         except Exception as e:
             print(f"Error : {e}")
 
