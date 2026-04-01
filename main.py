@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
+import csv
+from tkinter import filedialog, messagebox
 import sqlite3
 from PIL import Image, ImageTk
 import screeninfo as screen
@@ -292,12 +294,19 @@ class Window:
                             continue
                 
                 colors = {"T1": "blue", "T2": "orange", "T3": "green", "T4": "red"}
+
+                has_legend = False
                 for sensor, data in sensor_data.items():
                     if data['x']:
                         self.ax.plot(data['x'], data['y'], label=sensor, color=colors.get(sensor, "black"))
+                        has_legend = True
 
                 self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-                self.ax.legend(loc="upper left", fontsize=10)
+
+                #Legend don't draw herself if no data
+                if has_legend:   
+                    self.ax.legend(loc="upper left", fontsize=10)
+
                 self.canvas_graphic.draw()
 
         except Exception as e:
@@ -310,7 +319,9 @@ class Window:
 
         self.history_menu = tk.Menu(self.menu_bar, postcommand=self.update_history)
         self.menu_bar.add_cascade(label="historique des Sessions", menu=self.history_menu)
+        self.menu_bar.add_command(label="Nouvelle Session", command=self.start_session)
         self.menu_bar.add_command(label="Exporter la session", command=self.export_session)
+        self.menu_bar.add_command(label="Supprimer les sessions", command=self.delete_sessions)
 
         self.root.config(menu=self.menu_bar)
 
@@ -345,7 +356,57 @@ class Window:
         self.refresh_data()
 
     def export_session(self):
+        if self.current_id_session is None:
+            messagebox.showwarning("Avertissement", "Aucune session active à exporter.")
+            return
+    
+        path_file = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv")],
+            title="Exporter la session",
+            initialfile=f"session_{self.current_id_session}.csv"
+        )
+
+        if not path_file:
+            return
+        else :
+            try:
+                conn = sqlite3.connect('db/him_distill.db')
+                cursor = conn.cursor()
+                cursor.execute("SELECT sensor_name, temperature, timestamp FROM temperature_readings WHERE session_id = ? ORDER BY timestamp ASC", (self.current_id_session,))
+                rows = cursor.fetchall()
+                conn.close()
+
+                if not rows:
+                    messagebox.showinfo("Information", "Aucune donnée à exporter pour cette session.")
+                    return
+                
+                with open(path_file, mode='w', newline='', encoding="utf-8") as file:
+                    writer = csv.writer(file, delimiter=";")
+                    writer.writerow(["Capteur", "Temp", "Timestamp"])
+                    writer.writerows(rows)
+                messagebox.showinfo("Succès", f"Session exportée avec succès vers {path_file}")
+            except Exception as e:
+                messagebox.showerror("Erreur", {e})
+
+    def delete_sessions(self):
+        if messagebox.askyesno("Confirmer", "Cette action aura pour conséquence de supprimer la session en cours et toutes les données associées. Voulez-vous continuer ?"):
+            try:
+                conn = sqlite3.connect('db/him_distill.db')
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM sessions WHERE id = ?", (self.current_id_session,))
+                cursor.execute("DELETE FROM temperature_readings WHERE session_id = ?", (self.current_id_session,))
+                conn.commit()
+                conn.close()
+                self.current_id_session = None
+                self.refresh_data()
+                messagebox.showinfo("Succès", "Session supprimée avec succès.")
+            except Exception as e:
+                messagebox.showerror("Erreur",{e})
+
         
+
+
 
 
 root = tk.Tk()
