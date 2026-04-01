@@ -149,7 +149,6 @@ class Window:
         self.start_session()
         self.menu()
         self.refresh_data()
-        self.auto_save_timer()
 
                                                                
 
@@ -311,39 +310,21 @@ class Window:
 
         self.history_menu = tk.Menu(self.menu_bar, postcommand=self.update_history)
         self.menu_bar.add_cascade(label="historique des Sessions", menu=self.history_menu)
-        self.menu_bar.add_command(label="Sauvegarder la session", command=self.save_data)
-        self.menu_bar.add_command(label="Exporter la session")
+        self.menu_bar.add_command(label="Exporter la session", command=self.export_session)
 
         self.root.config(menu=self.menu_bar)
 
     def start_session(self):
         conn = sqlite3.connect('db/him_distill.db')
         cursor = conn.cursor()
+        #cursor.execute("DELETE FROM sessions")
+        #cursor.execute("DELETE FROM temperature_readings")
         name = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute("INSERT INTO sessions (start_time) VALUES (?)", (name,))
         self.current_id_session = cursor.lastrowid
         conn.commit()
         conn.close()
     
-    def save_data(self):
-        try:
-            conn = sqlite3.connect('db/him_distill.db')
-            cursor = conn.cursor()
-
-            for sensor in ["T1", "T2", "T3", "T4"]:
-                cursor.execute("SELECT temperature FROM temperature_readings WHERE sensor_name = ? ORDER BY id DESC LIMIT 1", (sensor,))
-                last_temp = cursor.fetchone()
-                if last_temp:
-                    cursor.execute("INSERT INTO temperature_readings (session_id, sensor_name, temperature) VALUES (?, ?, ?)", (self.current_id_session, sensor, last_temp[0]))
-
-            conn.commit()
-            conn.close()
-        except Exception as e:
-            print(f"Error : {e}")
-    
-    def auto_save_timer(self):
-        self.save_data()
-        self.root.after(60000, self.auto_save_timer)
 
     def update_history(self):
         self.history_menu.delete(0, tk.END)#clear existing list
@@ -362,6 +343,9 @@ class Window:
     def load_session(self, session_id):
         self.current_id_session = session_id
         self.refresh_data()
+
+    def export_session(self):
+        
 
 
 root = tk.Tk()
