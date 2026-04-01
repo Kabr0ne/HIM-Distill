@@ -3,6 +3,12 @@ from tkinter import ttk
 import sqlite3
 from PIL import Image, ImageTk
 import screeninfo as screen
+from matplotlib.figure import Figure
+from datetime import datetime
+import matplotlib.dates as mdates
+
+
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 screen_info = screen.get_monitors()[0]
 screen_width = screen_info.width - 200
@@ -128,7 +134,16 @@ class Window:
         self.canvas.create_text(screen_width - 475, (screen_height/5)-190, anchor=tk.NW, text="T1", font=("Arial", 25))
         self.canvas.tag_bind(self.btn_filter_censor1, "<Button-1>", lambda event: self.toggle_filter_censor1())
 
+        #graphic history
+        self.graphic_frame = tk.Frame(self.root, bg="white", bd=2, relief="flat")
+        self.fig = Figure(figsize=(6, 4), dpi=100)
+        self.ax = self.fig.add_subplot(111)
+        self.ax.set_title("Graphique Température")
+        self.ax.set_facecolor("#F0F0F0")
 
+        self.canvas_graphic = FigureCanvasTkAgg(self.fig, master=self.graphic_frame)
+        self.canvas_graphic.get_tk_widget().pack()
+        self.canvas.create_window(screen_width - 20, (screen_height/1.5)-60, anchor=tk.NE, window=self.graphic_frame)   
 
         self.refresh_data()
                                                                
@@ -235,12 +250,14 @@ class Window:
             if not active_sensors:
                 for item in self.tree.get_children():
                     self.tree.delete(item)
+                self.ax.clear()
+                self.canvas_graphic.draw()
             else:
                 conn = sqlite3.connect('db/him_distill.db')
                 cursor = conn.cursor()
 
                 placeholders = ', '.join(['?'] * len(active_sensors))
-                query = f"SELECT sensor_name, temperature, timestamp FROM temperature_readings WHERE sensor_name IN ({placeholders}) ORDER BY id DESC LIMIT 15"
+                query = f"SELECT sensor_name, temperature, timestamp FROM temperature_readings WHERE sensor_name IN ({placeholders}) ORDER BY id DESC LIMIT 30"
                 
                 cursor.execute(query, active_sensors)
                 rows = cursor.fetchall()
@@ -248,18 +265,41 @@ class Window:
 
                 for item in self.tree.get_children():
                     self.tree.delete(item)
-                for row in rows:
+
+                for row in rows[:15]:
                     name, temp, full_time = row
                     time_display = full_time.split()[-1]
                     self.tree.insert("", tk.END, values=(name, f"{temp:.2f}", time_display))
                     
+
+                self.ax.clear()
+                self.ax.set_title("Graphique Température")
+
+                sensor_data = {sensor: {'x': [], 'y': []} for sensor in active_sensors}
+
+                for row in reversed(rows): 
+                    name, temp, full_time = row
+                    if name in sensor_data:
+                        try:
+                            dt_obj = datetime.strptime(full_time, '%Y-%m-%d %H:%M:%S')
+                            sensor_data[name]['x'].append(dt_obj)
+                            sensor_data[name]['y'].append(temp)
+                        except ValueError:
+                            continue
+                
+                colors = {"T1": "blue", "T2": "orange", "T3": "green", "T4": "red"}
+                for sensor, data in sensor_data.items():
+                    if data['x']:
+                        self.ax.plot(data['x'], data['y'], label=sensor, color=colors.get(sensor, "black"))
+
+                self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+                self.ax.legend(loc="upper left", fontsize=10)
+                self.canvas_graphic.draw()
+
         except Exception as e:
             print(f"Error : {e}")
 
         self.root.after(2000, self.refresh_data)
-
-    
-
 
 
 root = tk.Tk()
