@@ -13,8 +13,18 @@ from gpiozero import MCP3008
 
 screen_width = 800
 screen_height = 480
-T1 = MCP3008(channel=0)
-T2 = MCP3008(channel=1)
+
+#réel valeur
+#T1 = MCP3008(channel=0)
+#T2 = MCP3008(channel=1)
+
+#Test PC
+class MockSensor:
+    def __init__(self, value):
+        self.value = value
+
+T1 = MockSensor(0.40)
+T2 = MockSensor(0.45)
 
 class Window:
     def __init__(self, root):
