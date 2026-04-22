@@ -7,3 +7,8 @@
 - Exportation des données d'une ou plusieurs sondes sur un support USB
 
 ### D'autres fonctionnalitées pourront être ajoutés/modifiés
+
+### Schéma de montage du projet
+<img width="2753" height="2800" alt="Montage_MCP3008_800x420_thermocouple_sonde_K_PDT_COMPLET" src="https://github.com/user-attachments/assets/914b36ba-c777-417d-b172-9ac4fdab2890" />
+
+
