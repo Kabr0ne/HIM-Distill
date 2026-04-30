@@ -1,3 +1,5 @@
+from time import time
+
 from gpiozero import MCP3008
 import config
 
@@ -8,7 +10,14 @@ class SensorManager:
 
     def read_temp(self):
         try:
-            voltage = self.adc.value * config.tension_rasp
+            data_temp = []
+            data_temp.append(self.adc.value)
+            for i in range(1, 10):
+                data_temp.append(self.adc.value)
+                time.sleep(0.1)
+            average_value = sum(data_temp) / len(data_temp)
+
+            voltage = average_value * config.tension_rasp
             v_reel = voltage * config.pont_diviseur_ratio
             temp = (v_reel - config.offset_thermocouple) / 0.005
             return temp
