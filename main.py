@@ -58,11 +58,13 @@ class Window:
         self.temp_sensor2label = self.canvas.create_text(360, 63, anchor=tk.NW, text="T2", font=("Arial", 12))
         self.temp_sensor3label = self.canvas.create_text(377, 135, anchor=tk.NW, text="T3", font=("Arial", 12))
         self.temp_sensor4label = self.canvas.create_text(380, 325, anchor=tk.NW, text="T4", font=("Arial", 12))
+        self.temp_sensor5label = self.canvas.create_text(230, 70, anchor=tk.NW, text="T5", font=("Arial", 12))
 
         self.temp_sensor1 = self.canvas.create_text(390, 15, anchor=tk.NW, text="--,--°C", font=("Arial", 12))
         self.temp_sensor2 = self.canvas.create_text(392, 63, anchor=tk.NW, text="--,--°C", font=("Arial", 12))
         self.temp_sensor3 = self.canvas.create_text(375, 107, anchor=tk.NW, text="--,--°C", font=("Arial", 12))
         self.temp_sensor4 = self.canvas.create_text(412, 325, anchor=tk.NW, text="--,--°C", font=("Arial", 12))
+        self.temp_sensor5 = self.canvas.create_text(255, 70, anchor=tk.NW, text="--,--°C", font=("Arial", 12))
 
         self.is_on = False
         self.btn_setON = self.canvas.create_oval(80, 60, 120, 100, fill="red", outline="black", width=2)
@@ -115,22 +117,27 @@ class Window:
         self.is_filter_censor2_on = True
         self.is_filter_censor3_on = True
         self.is_filter_censor4_on = True
+        self.is_filter_censor5_on = True
 
-        self.btn_filter_censor1 = self.canvas.create_oval(580, 10, 610, 40, fill="green", outline="black")
-        self.canvas.create_text(588, 42, anchor=tk.NW, text="T1", font=("Arial", 10))
+        self.btn_filter_censor1 = self.canvas.create_oval(550, 10, 580, 40, fill="green", outline="black")
+        self.canvas.create_text(558, 42, anchor=tk.NW, text="T1", font=("Arial", 10))
         self.canvas.tag_bind(self.btn_filter_censor1, "<Button-1>", lambda event: self.toggle_filter_censor1())
 
-        self.btn_filter_censor2 = self.canvas.create_oval(630, 10, 660, 40, fill="green", outline="black")
-        self.canvas.create_text(638, 42, anchor=tk.NW, text="T2", font=("Arial", 10))
+        self.btn_filter_censor2 = self.canvas.create_oval(600, 10, 630, 40, fill="green", outline="black")
+        self.canvas.create_text(608, 42, anchor=tk.NW, text="T2", font=("Arial", 10))
         self.canvas.tag_bind(self.btn_filter_censor2, "<Button-1>", lambda event: self.toggle_filter_censor2())
 
-        self.btn_filter_censor3 = self.canvas.create_oval(680, 10, 710, 40, fill="green", outline="black")
-        self.canvas.create_text(688, 42, anchor=tk.NW, text="T3", font=("Arial", 10))
+        self.btn_filter_censor3 = self.canvas.create_oval(650, 10, 680, 40, fill="green", outline="black")
+        self.canvas.create_text(658, 42, anchor=tk.NW, text="T3", font=("Arial", 10))
         self.canvas.tag_bind(self.btn_filter_censor3, "<Button-1>", lambda event: self.toggle_filter_censor3())
 
-        self.btn_filter_censor4 = self.canvas.create_oval(730, 10, 760, 40, fill="green", outline="black")
-        self.canvas.create_text(738, 42, anchor=tk.NW, text="T4", font=("Arial", 10))
+        self.btn_filter_censor4 = self.canvas.create_oval(700, 10, 730, 40, fill="green", outline="black")
+        self.canvas.create_text(708, 42, anchor=tk.NW, text="T4", font=("Arial", 10))
         self.canvas.tag_bind(self.btn_filter_censor4, "<Button-1>", lambda event: self.toggle_filter_censor4())
+
+        self.btn_filter_censor5 = self.canvas.create_oval(750, 10, 780, 40, fill="green", outline="black")
+        self.canvas.create_text(758, 42, anchor=tk.NW, text="T5", font=("Arial", 10))
+        self.canvas.tag_bind(self.btn_filter_censor5, "<Button-1>", lambda event: self.toggle_filter_censor5())
 
         self.graphic_frame = tk.Frame(self.root, bg="white", bd=1, relief="flat")
         self.fig = Figure(figsize=(3, 2), dpi=100)
@@ -234,6 +241,14 @@ class Window:
             self.canvas.itemconfig(self.btn_filter_censor4, fill="green")
         else:
             self.canvas.itemconfig(self.btn_filter_censor4, fill="red")
+        self.refresh_data()
+    
+    def toggle_filter_censor5(self):
+        self.is_filter_censor5_on = not self.is_filter_censor5_on
+        if self.is_filter_censor5_on:
+            self.canvas.itemconfig(self.btn_filter_censor5, fill="green")
+        else:
+            self.canvas.itemconfig(self.btn_filter_censor5, fill="red")
         self.refresh_data()
 
 

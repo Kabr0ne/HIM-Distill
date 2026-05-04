@@ -1,4 +1,4 @@
-from time import time
+import time
 
 from gpiozero import MCP3008
 import config
@@ -14,7 +14,7 @@ class SensorManager:
             data_temp.append(self.adc.value)
             for i in range(1, 10):
                 data_temp.append(self.adc.value)
-                time.sleep(0.1)
+                time.sleep(0.02)
             average_value = sum(data_temp) / len(data_temp)
 
             voltage = average_value * config.tension_rasp
